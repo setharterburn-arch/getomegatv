@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+
+const PaymentForm = dynamic(() => import('./components/PaymentForm'), { ssr: false });
 
 interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   buttons?: { label: string; value: string }[];
+  showPayment?: { amount: number; plan: string };
 }
 
 const QUICK_OPTIONS = [
@@ -33,6 +37,8 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [activePayment, setActivePayment] = useState<{ amount: number; plan: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -92,27 +98,103 @@ export default function Home() {
   };
 
   const handleButtonClick = (value: string) => {
-    // If it's a URL, open in new tab instead of sending as message
-    if (value.startsWith('http')) {
-      window.open(value, '_blank');
-      // Show confirmation message
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'I\'ve opened the PayPal payment page in a new tab. Complete your payment there, then come back and let me know!',
-        buttons: [
-          { label: '✅ I completed payment', value: 'I just finished paying, please verify my payment' },
-          { label: '❌ I had an issue', value: 'I had a problem with the payment' },
-        ]
-      }]);
+    // Check if it's a plan selection
+    const planMatch = value.match(/monthly plan for \$(\d+)|6 month plan for \$(\d+)|yearly plan for \$(\d+)/i);
+    if (planMatch) {
+      // Extract amount and plan
+      let amount = 0;
+      let plan = '';
+      if (value.includes('monthly')) {
+        amount = 20;
+        plan = 'Monthly';
+      } else if (value.includes('6 month')) {
+        amount = 90;
+        plan = '6 Months';
+      } else if (value.includes('yearly')) {
+        amount = 150;
+        plan = 'Yearly';
+      }
+      
+      // Check if we have email
+      if (!customerEmail) {
+        sendMessage(value); // Let the bot ask for email first
+        return;
+      }
+      
+      // Show payment form
+      setActivePayment({ amount, plan });
+      setMessages(prev => [...prev, 
+        { id: Date.now().toString(), role: 'user', content: value },
+        { 
+          id: (Date.now() + 1).toString(), 
+          role: 'assistant', 
+          content: `Great choice! Complete your payment below for ${plan} ($${amount}).`,
+          showPayment: { amount, plan }
+        }
+      ]);
       return;
     }
+    
+    // If it's a URL, open in new tab
+    if (value.startsWith('http')) {
+      window.open(value, '_blank');
+      return;
+    }
+    
+    // Check if response contains an email
+    if (value.includes('@') && value.includes('.')) {
+      setCustomerEmail(value);
+    }
+    
     sendMessage(value);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Check if this is an email
+    if (input.includes('@') && input.includes('.')) {
+      setCustomerEmail(input);
+    }
     sendMessage(input);
+  };
+
+  const handlePaymentSuccess = (response: any) => {
+    setActivePayment(null);
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `🎉 Payment successful!\n\nYour login credentials will be sent to ${customerEmail} within 10-15 minutes.\n\nWhile you wait, here's how to get started:\n\n1. Install the Downloader app\n2. Open it and enter code: 767806\n3. Install Omega TV\n4. Enter your username and password when you receive them\n\nWelcome to Omega TV!`,
+      buttons: [
+        { label: '📱 Setup Instructions', value: 'How do I install the Omega TV app?' },
+        { label: '💬 I have a question', value: 'I have a question about my new subscription' },
+      ]
+    }]);
+  };
+
+  const handlePaymentError = (error: string) => {
+    setActivePayment(null);
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `❌ Payment failed: ${error}\n\nWould you like to try again or use a different payment method?`,
+      buttons: [
+        { label: '🔄 Try Again', value: 'I want to try payment again' },
+        { label: '💬 Need Help', value: 'I need help with payment' },
+      ]
+    }]);
+  };
+
+  const handlePaymentCancel = () => {
+    setActivePayment(null);
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: 'No problem! Let me know if you\'d like to continue with a different plan or if you have any questions.',
+      buttons: [
+        { label: '📋 See Plans Again', value: 'Show me the subscription plans' },
+        { label: '💬 Ask a Question', value: 'I have a question' },
+      ]
+    }]);
   };
 
   return (
@@ -143,14 +225,25 @@ export default function Home() {
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
                 
-                {message.buttons && message.buttons.length > 0 && (message.id !== '1' || showOptions) && (
+                {message.showPayment && activePayment && (
+                  <PaymentForm
+                    amount={activePayment.amount}
+                    plan={activePayment.plan}
+                    email={customerEmail}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onCancel={handlePaymentCancel}
+                  />
+                )}
+                
+                {message.buttons && message.buttons.length > 0 && !message.showPayment && (message.id !== '1' || showOptions) && (
                   <div className={`mt-3 space-y-2 transition-all duration-300 ${message.id === '1' && showOptions ? 'animate-fadeIn' : ''}`}>
                     {message.buttons.map((btn, idx) => (
                       <button
                         key={idx}
                         onClick={() => handleButtonClick(btn.value)}
                         className="w-full text-left px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
-                        disabled={loading}
+                        disabled={loading || !!activePayment}
                       >
                         {btn.label}
                       </button>
