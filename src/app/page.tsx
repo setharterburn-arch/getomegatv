@@ -92,6 +92,21 @@ export default function Home() {
   };
 
   const handleButtonClick = (value: string) => {
+    // If it's a URL, open in new tab instead of sending as message
+    if (value.startsWith('http')) {
+      window.open(value, '_blank');
+      // Show confirmation message
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'I\'ve opened the PayPal payment page in a new tab. Complete your payment there, then come back and let me know!',
+        buttons: [
+          { label: '✅ I completed payment', value: 'I just finished paying, please verify my payment' },
+          { label: '❌ I had an issue', value: 'I had a problem with the payment' },
+        ]
+      }]);
+      return;
+    }
     sendMessage(value);
   };
 
