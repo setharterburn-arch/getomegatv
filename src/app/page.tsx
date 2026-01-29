@@ -32,6 +32,7 @@ export default function Home() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -127,8 +128,8 @@ export default function Home() {
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
                 
-                {message.buttons && message.buttons.length > 0 && (
-                  <div className="mt-3 space-y-2">
+                {message.buttons && message.buttons.length > 0 && (message.id !== '1' || showOptions) && (
+                  <div className={`mt-3 space-y-2 transition-all duration-300 ${message.id === '1' && showOptions ? 'animate-fadeIn' : ''}`}>
                     {message.buttons.map((btn, idx) => (
                       <button
                         key={idx}
@@ -166,6 +167,7 @@ export default function Home() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onFocus={() => setShowOptions(true)}
             placeholder="Type a message..."
             className="flex-1 bg-white/10 text-white placeholder-gray-400 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
             disabled={loading}
