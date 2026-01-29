@@ -99,12 +99,15 @@ export default function Home() {
 
   const handleButtonClick = (value: string) => {
     // Check if it's a plan selection
-    const planMatch = value.match(/monthly plan for \$(\d+)|6 month plan for \$(\d+)|yearly plan for \$(\d+)/i);
+    const planMatch = value.match(/dev.*\$1|monthly plan for \$(\d+)|6 month plan for \$(\d+)|yearly plan for \$(\d+)/i);
     if (planMatch) {
       // Extract amount and plan
       let amount = 0;
       let plan = '';
-      if (value.includes('monthly')) {
+      if (value.toLowerCase().includes('dev')) {
+        amount = 1;
+        plan = 'Dev Test';
+      } else if (value.includes('monthly')) {
         amount = 20;
         plan = 'Monthly';
       } else if (value.includes('6 month')) {
