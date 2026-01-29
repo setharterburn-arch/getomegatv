@@ -98,6 +98,23 @@ export default function Home() {
   };
 
   const handleButtonClick = (value: string) => {
+    // Check if it's a retry payment action
+    if (value.startsWith('__RETRY_PAYMENT__')) {
+      const parts = value.split('__');
+      const amount = parseInt(parts[2], 10);
+      const plan = parts[3];
+      if (amount && plan) {
+        setActivePayment({ amount, plan });
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `Let's try that again! Complete your payment below for ${plan} ($${amount}).`,
+          showPayment: { amount, plan }
+        }]);
+        return;
+      }
+    }
+    
     // Check if it's a plan selection
     const planMatch = value.match(/dev.*\$1|monthly plan for \$(\d+)|6 month plan for \$(\d+)|yearly plan for \$(\d+)/i);
     if (planMatch) {
@@ -175,13 +192,16 @@ export default function Home() {
   };
 
   const handlePaymentError = (error: string) => {
+    // Keep the payment info so we can retry
+    const failedPayment = activePayment;
     setActivePayment(null);
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
       role: 'assistant',
-      content: `❌ Payment failed: ${error}\n\nWould you like to try again or use a different payment method?`,
+      content: `❌ Payment failed: ${error}\n\nWould you like to try again or choose a different plan?`,
       buttons: [
-        { label: '🔄 Try Again', value: 'I want to try payment again' },
+        { label: '🔄 Try Payment Again', value: `__RETRY_PAYMENT__${failedPayment?.amount}__${failedPayment?.plan}` },
+        { label: '📋 Choose Different Plan', value: 'Show me the subscription plans' },
         { label: '💬 Need Help', value: 'I need help with payment' },
       ]
     }]);
