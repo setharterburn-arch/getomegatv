@@ -14,6 +14,7 @@ interface Message {
 }
 
 const QUICK_OPTIONS = [
+  { label: '🎁 Free 24hr Trial', value: 'I want a free trial' },
   { label: '🆕 New Subscription', value: 'I want to sign up for a new subscription' },
   { label: '🔄 Renew / Pay', value: 'I need to renew my subscription' },
   { label: '🔧 Troubleshooting', value: 'I need help with a technical issue' },
@@ -97,7 +98,66 @@ export default function Home() {
     }
   };
 
+  const [awaitingTrialEmail, setAwaitingTrialEmail] = useState(false);
+
+  const handleFreeTrial = async (email: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/free-trial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `🎉 Your free 24-hour trial is being created!\n\nYour login credentials will be sent to: ${email}\n\nYou should receive them within 5-10 minutes.\n\nWhile you wait, here's how to get ready:\n1. Install the Downloader app on your device\n2. Open it and enter code: 767806\n3. Install Omega TV\n4. Enter your credentials when you receive them`,
+          buttons: [
+            { label: '📱 Setup Instructions', value: 'How do I install the Omega TV app?' },
+            { label: '🆕 Subscribe Now', value: 'I want to sign up for a new subscription' },
+          ]
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `Sorry, there was an issue creating your trial: ${data.error}\n\nPlease try again or text us at (270) 238-5765.`,
+          buttons: [
+            { label: '🔄 Try Again', value: 'I want a free trial' },
+            { label: '💬 Contact Support', value: 'I need help' },
+          ]
+        }]);
+      }
+    } catch (error) {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again or text us at (270) 238-5765.',
+      }]);
+    } finally {
+      setLoading(false);
+      setAwaitingTrialEmail(false);
+    }
+  };
+
   const handleButtonClick = (value: string) => {
+    // Check if it's a free trial request
+    if (value.toLowerCase().includes('free trial')) {
+      setAwaitingTrialEmail(true);
+      setMessages(prev => [...prev,
+        { id: Date.now().toString(), role: 'user', content: value },
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: '🎁 Great choice! Our free 24-hour trial gives you full access to try Omega TV.\n\nWhat email should I send your login credentials to?',
+        }
+      ]);
+      return;
+    }
+
     // Check if it's a retry payment action
     if (value.startsWith('__RETRY_PAYMENT__')) {
       const parts = value.split('__');
@@ -171,6 +231,24 @@ export default function Home() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if we're waiting for trial email
+    if (awaitingTrialEmail) {
+      if (input.includes('@') && input.includes('.')) {
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: input }]);
+        handleFreeTrial(input);
+        setInput('');
+        return;
+      } else {
+        setMessages(prev => [...prev,
+          { id: Date.now().toString(), role: 'user', content: input },
+          { id: (Date.now() + 1).toString(), role: 'assistant', content: "That doesn't look like a valid email. Please enter your email address:" }
+        ]);
+        setInput('');
+        return;
+      }
+    }
+    
     // Check if this is an email
     if (input.includes('@') && input.includes('.')) {
       setCustomerEmail(input);
