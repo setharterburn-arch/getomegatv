@@ -25,41 +25,53 @@ export default function PaymentForm({ amount, plan, email, onSuccess, onError, o
   const inputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load BlockChyp tokenizer script
-    const script = document.createElement('script');
-    script.src = 'https://api.blockchyp.com/static/js/blockchyp-tokenizer-all.min.js';
-    script.async = true;
-    script.onload = () => {
-      initTokenizer();
-    };
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  const initTokenizer = async () => {
-    try {
-      // Fetch tokenizing key from backend
-      const response = await fetch('/api/blockchyp/tokenizing-key');
-      const data = await response.json();
-      
-      if (window.tokenizer && inputRef.current) {
-        tokenizerRef.current = window.tokenizer;
+    let mounted = true;
+    
+    const loadTokenizer = async () => {
+      // Check if script already loaded
+      if (!window.tokenizer) {
+        const script = document.createElement('script');
+        script.src = 'https://api.blockchyp.com/static/js/blockchyp-tokenizer-all.min.js';
+        script.async = true;
         
-        // Render the secure input
-        window.tokenizer.render(data.tokenizingKey, false, 'blockchyp-card-input', {
-          postalCode: true,
+        await new Promise<void>((resolve, reject) => {
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load BlockChyp'));
+          document.body.appendChild(script);
         });
-        
-        setReady(true);
       }
-    } catch (err) {
-      console.error('Failed to init tokenizer:', err);
-      onError('Failed to load payment form');
-    }
-  };
+      
+      // Wait a tick for DOM to be ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!mounted) return;
+      
+      try {
+        const response = await fetch('/api/blockchyp/tokenizing-key');
+        const data = await response.json();
+        
+        if (window.tokenizer && document.getElementById('blockchyp-card-input')) {
+          tokenizerRef.current = window.tokenizer;
+          
+          // Render the secure input - use test=false for live, test=true for test mode
+          window.tokenizer.render(data.tokenizingKey, false, 'blockchyp-card-input', {
+            postalCode: true,
+          });
+          
+          setReady(true);
+        }
+      } catch (err) {
+        console.error('Failed to init tokenizer:', err);
+        if (mounted) onError('Failed to load payment form');
+      }
+    };
+    
+    loadTokenizer();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [onError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +134,10 @@ export default function PaymentForm({ amount, plan, email, onSuccess, onError, o
             id="blockchyp-card-input" 
             ref={inputRef}
             className="bg-white rounded-lg p-3 min-h-[50px]"
+          />
+          <div 
+            id="blockchyp-card-input-error" 
+            className="text-red-400 text-sm mt-1 hidden"
           />
         </div>
         
