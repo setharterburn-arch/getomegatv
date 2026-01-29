@@ -17,7 +17,11 @@ const QUICK_OPTIONS = [
   { label: '💬 Something Else', value: 'I have a different question' },
 ];
 
+// Generate a unique session ID
+const generateSessionId = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
+
 export default function Home() {
+  const [sessionId] = useState(() => generateSessionId());
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -57,7 +61,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: text,
-          history: messages.map(m => ({ role: m.role, content: m.content }))
+          history: messages.map(m => ({ role: m.role, content: m.content })),
+          sessionId: sessionId
         }),
       });
 
