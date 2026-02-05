@@ -61,7 +61,7 @@ export default function RenewPage() {
         tokenizerRef.current = window.tokenizer;
         tokenizerRef.current.render(
           process.env.NEXT_PUBLIC_BLOCKCHYP_TOKENIZING_KEY || '',
-          true, // test mode
+          false, // production mode
           'secure-input',
           {
             placeholder: 'Card Number',
