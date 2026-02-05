@@ -28,11 +28,13 @@ async function sendPushover(title: string, message: string, priority: number = 0
   }
 }
 
-function generateBlockChypHeaders(body: string) {
+function generateBlockChypHeaders() {
   const timestamp = new Date().toISOString();
-  const nonce = crypto.randomBytes(16).toString('hex');
+  const nonce = crypto.randomBytes(32).toString('hex');
   
-  const toSign = BLOCKCHYP_API_KEY + BLOCKCHYP_BEARER_TOKEN + timestamp + nonce + body;
+  // Per BlockChyp SDK: signature = HMAC-SHA256(signingKey, apiKey + bearerToken + timestamp + nonce)
+  // The request body is NOT included in the signature
+  const toSign = BLOCKCHYP_API_KEY + BLOCKCHYP_BEARER_TOKEN + timestamp + nonce;
   const signature = crypto
     .createHmac('sha256', Buffer.from(BLOCKCHYP_SIGNING_KEY, 'hex'))
     .update(toSign)
@@ -91,7 +93,7 @@ export async function POST(req: NextRequest) {
       enroll: saveCard || false,
     });
 
-    const headers = generateBlockChypHeaders(chargeBody);
+    const headers = generateBlockChypHeaders();
     
     const response = await fetch('https://api.blockchyp.com/api/charge', {
       method: 'POST',
