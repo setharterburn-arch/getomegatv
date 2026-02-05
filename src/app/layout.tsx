@@ -2,11 +2,15 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
-  title: 'Omega TV - Premium IPTV',
-  description: 'Your premium IPTV service provider',
+  title: 'Omega TV - Stream Everything',
+  description: '10,000+ channels, movies, sports, and live TV. One subscription, any device.',
 }
 
 export default function RootLayout({
@@ -15,11 +19,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body className={inter.className}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-          {children}
-        </div>
+        {children}
       </body>
     </html>
   )
