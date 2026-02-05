@@ -1,184 +1,173 @@
-'use client';
+'use client'
 
-import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link'
+import { Tv, MessageCircle, PlayCircle, DollarSign } from 'lucide-react'
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  buttons?: { label: string; value: string }[];
-}
-
-const QUICK_OPTIONS = [
-  { label: '🆕 New Subscription', value: 'I want to sign up for a new subscription' },
-  { label: '🔄 Renew / Pay', value: 'I need to renew my subscription' },
-  { label: '🔧 Troubleshooting', value: 'I need help with a technical issue' },
-  { label: '📱 Setup Help', value: 'I need help setting up the app' },
-  { label: '💬 Something Else', value: 'I have a different question' },
-];
-
-export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Welcome to Omega TV! 👋\n\nI\'m here to help you with subscriptions, troubleshooting, setup, and more.\n\nWhat can I help you with today?',
-      buttons: QUICK_OPTIONS.map(opt => ({ label: opt.label, value: opt.value })),
-    },
-  ]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || loading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: text,
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: text,
-          history: messages.map(m => ({ role: m.role, content: m.content }))
-        }),
-      });
-
-      const data = await response.json();
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.message,
-        buttons: data.buttons,
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      setMessages(prev => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: 'Sorry, something went wrong. Please try again or text us at (270) 238-5765.',
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleButtonClick = (value: string) => {
-    sendMessage(value);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sendMessage(input);
-  };
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex flex-col">
+    <div className="min-h-screen bg-zinc-950 text-white">
       {/* Header */}
-      <header className="p-4 text-center border-b border-white/10">
-        <h1 className="text-2xl font-bold text-white">
-          <span className="text-purple-400">Ω</span> OMEGA TV
-        </h1>
-        <p className="text-gray-400 text-sm">Premium Streaming • Unlimited Entertainment</p>
+      <header className="border-b border-zinc-800">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <Tv className="w-8 h-8 text-purple-500" />
+            <span className="text-xl font-bold">Omega TV</span>
+          </Link>
+          <nav className="flex items-center gap-6">
+            <a href="#pricing" className="text-zinc-400 hover:text-white text-sm">Pricing</a>
+            <a href="#support" className="text-zinc-400 hover:text-white text-sm">Support</a>
+            <Link href="/login" className="text-zinc-400 hover:text-white text-sm">Login</Link>
+            <Link href="/signup" className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium">
+              Get Started
+            </Link>
+          </nav>
+        </div>
       </header>
 
-      {/* Chat Container */}
-      <div className="flex-1 max-w-2xl mx-auto w-full flex flex-col p-4">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-4 pb-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white/10 text-white'
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-                
-                {message.buttons && message.buttons.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {message.buttons.map((btn, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleButtonClick(btn.value)}
-                        className="w-full text-left px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
-                        disabled={loading}
-                      >
-                        {btn.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-          
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-white/10 rounded-2xl px-4 py-3">
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
+      {/* Hero - Simple */}
+      <section className="max-w-3xl mx-auto px-6 py-20 text-center">
+        <h1 className="text-4xl md:text-5xl font-bold mb-6">
+          Live TV. Movies. Sports.<br />One subscription.
+        </h1>
+        <p className="text-xl text-zinc-400 mb-8 max-w-xl mx-auto">
+          10,000+ channels, on-demand content, and live sports. 
+          Works on Firestick, Android, iOS, and smart TVs.
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Link href="/signup" className="bg-purple-600 hover:bg-purple-700 px-8 py-3 rounded-lg font-semibold">
+            Start Watching
+          </Link>
+          <a href="#pricing" className="border border-zinc-700 hover:border-zinc-500 px-8 py-3 rounded-lg font-semibold">
+            View Pricing
+          </a>
         </div>
+      </section>
 
-        {/* Input */}
-        <form onSubmit={handleSubmit} className="flex gap-2 pt-4 border-t border-white/10">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-white/10 text-white placeholder-gray-400 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-full px-6 py-3 font-medium transition-colors"
-          >
-            Send
-          </button>
-        </form>
-      </div>
+      {/* What You Get */}
+      <section className="border-t border-zinc-800 py-16">
+        <div className="max-w-5xl mx-auto px-6">
+          <h2 className="text-2xl font-bold mb-8 text-center">What's Included</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <h3 className="font-semibold mb-2">📺 Live TV</h3>
+              <p className="text-zinc-400 text-sm">10,000+ channels including local networks, news, sports, and entertainment from around the world.</p>
+            </div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <h3 className="font-semibold mb-2">🎬 Movies & Shows</h3>
+              <p className="text-zinc-400 text-sm">Thousands of on-demand movies and TV series. New releases added regularly.</p>
+            </div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <h3 className="font-semibold mb-2">🏈 Sports</h3>
+              <p className="text-zinc-400 text-sm">NFL, NBA, MLB, NHL, UFC, soccer, and more. Never miss a game.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="border-t border-zinc-800 py-16">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-2xl font-bold mb-2 text-center">Simple Pricing</h2>
+          <p className="text-zinc-400 text-center mb-8">All plans include 3 connections. No hidden fees.</p>
+          
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center">
+              <h3 className="font-semibold mb-1">1 Month</h3>
+              <p className="text-3xl font-bold mb-4">$20</p>
+              <p className="text-zinc-500 text-sm mb-4">3 connections</p>
+              <Link href="/signup" className="block w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded-lg text-sm">
+                Select
+              </Link>
+            </div>
+            <div className="bg-zinc-900 border-2 border-purple-600 rounded-xl p-6 text-center relative">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-xs px-3 py-1 rounded-full">Best Value</span>
+              <h3 className="font-semibold mb-1">6 Months</h3>
+              <p className="text-3xl font-bold mb-1">$90</p>
+              <p className="text-green-500 text-sm mb-2">Save $30</p>
+              <p className="text-zinc-500 text-sm mb-4">3 connections</p>
+              <Link href="/signup" className="block w-full bg-purple-600 hover:bg-purple-700 py-2 rounded-lg text-sm">
+                Select
+              </Link>
+            </div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center">
+              <h3 className="font-semibold mb-1">12 Months</h3>
+              <p className="text-3xl font-bold mb-1">$150</p>
+              <p className="text-green-500 text-sm mb-2">Save $90</p>
+              <p className="text-zinc-500 text-sm mb-4">3 connections</p>
+              <Link href="/signup" className="block w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded-lg text-sm">
+                Select
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Devices */}
+      <section className="border-t border-zinc-800 py-16">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2 className="text-2xl font-bold mb-8">Works On Your Devices</h2>
+          <div className="flex flex-wrap justify-center gap-8 text-zinc-400">
+            <div className="text-center">
+              <div className="text-3xl mb-2">📱</div>
+              <p className="text-sm">iPhone & Android</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl mb-2">🔥</div>
+              <p className="text-sm">Firestick</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl mb-2">📺</div>
+              <p className="text-sm">Smart TVs</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl mb-2">💻</div>
+              <p className="text-sm">Web Browser</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl mb-2">🎮</div>
+              <p className="text-sm">Android TV Box</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Support */}
+      <section id="support" className="border-t border-zinc-800 py-16">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-2xl font-bold mb-8 text-center">Need Help?</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Link href="/support" className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors">
+              <div className="flex items-center gap-3 mb-2">
+                <MessageCircle className="w-6 h-6 text-purple-500" />
+                <h3 className="font-semibold">Chat Support</h3>
+              </div>
+              <p className="text-zinc-400 text-sm">Get help from our support bot or submit a request. We typically respond within a few hours.</p>
+            </Link>
+            <a href="https://www.youtube.com/@OmegaTV-IPTV" target="_blank" rel="noopener noreferrer" className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors">
+              <div className="flex items-center gap-3 mb-2">
+                <PlayCircle className="w-6 h-6 text-red-500" />
+                <h3 className="font-semibold">Setup Guides</h3>
+              </div>
+              <p className="text-zinc-400 text-sm">Video tutorials for Firestick, Android, iOS, and more. Step-by-step instructions.</p>
+            </a>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer className="p-4 text-center text-gray-500 text-sm border-t border-white/10">
-        <p>Need immediate help? Text us at <a href="sms:+12702385765" className="text-purple-400">(270) 238-5765</a></p>
+      <footer className="border-t border-zinc-800 py-8">
+        <div className="max-w-5xl mx-auto px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-zinc-500">
+            <Tv className="w-5 h-5" />
+            <span className="text-sm">Omega TV</span>
+          </div>
+          <div className="flex gap-6 text-sm text-zinc-500">
+            <Link href="/login" className="hover:text-white">Login</Link>
+            <Link href="/signup" className="hover:text-white">Sign Up</Link>
+            <Link href="/support" className="hover:text-white">Support</Link>
+          </div>
+        </div>
       </footer>
     </div>
-  );
+  )
 }

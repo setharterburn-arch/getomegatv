@@ -1,0 +1,14 @@
+{
+  "name": "omega-renewal-automation",
+  "version": "1.0.0",
+  "description": "IPTV panel renewal automation via Playwright",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "install-browsers": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "playwright": "^1.40.0"
+  }
+}
