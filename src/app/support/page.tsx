@@ -151,6 +151,12 @@ export default function SupportPage() {
 
           {/* Input */}
           <div className="p-4 border-t border-white/10">
+            <p className="text-center text-white/40 text-xs mb-3">
+              Still stuck? Email us at{' '}
+              <a href="mailto:support@getomegatv.com" className="text-purple-400 hover:text-purple-300">
+                support@getomegatv.com
+              </a>
+            </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowOptions(!showOptions)}
