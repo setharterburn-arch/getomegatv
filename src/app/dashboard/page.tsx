@@ -31,14 +31,14 @@ export default function DashboardPage() {
       } else {
         setUser(user)
         // Fetch subscription data
-        fetchSubscription(user.id)
+        fetchSubscription()
       }
     })
   }, [router])
 
-  const fetchSubscription = async (userId: string) => {
+  const fetchSubscription = async () => {
     try {
-      const res = await fetch(`/api/subscription?userId=${userId}`)
+      const res = await fetch('/api/subscription')
       const data = await res.json()
       setSubscription(data)
     } catch (err) {

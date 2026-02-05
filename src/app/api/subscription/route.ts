@@ -21,19 +21,15 @@ async function fetchPanelExpiry(iptvUsername: string): Promise<{ expDate: string
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.nextUrl.searchParams.get('userId')
-    let effectiveUserId = userId
+    // Always require authentication - user can only view their own subscription
+    const supabase = createServerSupabase()
+    const { data: { user } } = await supabase.auth.getUser()
     
-    // If no userId provided, get from current session
-    if (!effectiveUserId) {
-      const supabase = createServerSupabase()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
-      effectiveUserId = user.id
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    const effectiveUserId = user.id
     
     // Check for linked subscription
     const { data: subscription, error } = await adminSupabase
