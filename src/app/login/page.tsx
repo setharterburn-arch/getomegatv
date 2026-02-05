@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Tv, Mail, Lock } from 'lucide-react'
+import { Mail, Lock } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
@@ -38,9 +39,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <Tv className="w-6 h-6 text-white" />
-            </div>
+            <Logo className="w-12 h-12" />
             <span className="text-2xl font-bold text-white">Omega TV</span>
           </Link>
         </div>

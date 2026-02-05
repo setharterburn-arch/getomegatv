@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Tv, MessageCircle, PlayCircle, DollarSign } from 'lucide-react'
+import { MessageCircle, PlayCircle } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 
 export default function LandingPage() {
   return (
@@ -10,7 +11,7 @@ export default function LandingPage() {
       <header className="border-b border-zinc-800">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Tv className="w-8 h-8 text-purple-500" />
+            <Logo className="w-8 h-8" />
             <span className="text-xl font-bold">Omega TV</span>
           </Link>
           <nav className="flex items-center gap-6">
@@ -158,7 +159,7 @@ export default function LandingPage() {
       <footer className="border-t border-zinc-800 py-8">
         <div className="max-w-5xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-2 text-zinc-500">
-            <Tv className="w-5 h-5" />
+            <Logo className="w-5 h-5" />
             <span className="text-sm">Omega TV</span>
           </div>
           <div className="flex gap-6 text-sm text-zinc-500">

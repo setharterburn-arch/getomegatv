@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { 
-  Tv, Users, AlertCircle, CheckCircle, Link2, 
-  Clock, RefreshCw, Search, X, MessageSquare,
+  AlertCircle, CheckCircle, Link2, 
+  Clock, RefreshCw, X, MessageSquare,
   ChevronDown, ChevronUp
 } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 interface SupportRequest {
   id: string;
@@ -160,9 +161,7 @@ export default function AdminPage() {
       <header className="bg-slate-900/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <Tv className="w-5 h-5 text-white" />
-            </div>
+            <Logo className="w-10 h-10" />
             <span className="text-xl font-bold text-white">Omega TV Admin</span>
           </div>
           <button onClick={loadData} className="text-white/60 hover:text-white transition-colors">

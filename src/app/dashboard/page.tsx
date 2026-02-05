@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Tv, LogOut, Calendar, CreditCard, AlertCircle, CheckCircle } from 'lucide-react'
+import { LogOut, Calendar, CreditCard, AlertCircle, CheckCircle } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { createClient } from '@/lib/supabase'
 
 interface SubscriptionData {
@@ -70,9 +71,7 @@ export default function DashboardPage() {
       <header className="bg-slate-900/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <Tv className="w-5 h-5 text-white" />
-            </div>
+            <Logo className="w-10 h-10" />
             <span className="text-xl font-bold text-white">Omega TV</span>
           </div>
           <div className="flex items-center gap-4">
@@ -147,7 +146,7 @@ export default function DashboardPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                    <Tv className="w-6 h-6 text-purple-400" />
+                    <Logo className="w-6 h-6" />
                   </div>
                   <div>
                     <p className="text-sm text-white/60">Username</p>
