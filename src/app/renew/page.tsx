@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import Script from 'next/script';
 
 interface Subscription {
   id: string;
@@ -30,23 +29,18 @@ const PLANS: Plan[] = [
   { id: '12mo', name: '12 Months', months: 12, price_cents: 15000, connections: 3, savings: 'Save $90' },
 ];
 
-declare global {
-  interface Window {
-    tokenizer: any;
-  }
-}
-
 export default function RenewPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan>(PLANS[0]);
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
   const [saveCard, setSaveCard] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [tokenizerReady, setTokenizerReady] = useState(false);
-  const tokenizerRef = useRef<any>(null);
   
   const supabase = createClient();
   const router = useRouter();
@@ -54,25 +48,6 @@ export default function RenewPage() {
   useEffect(() => {
     checkAuth();
   }, []);
-
-  function initTokenizer() {
-    if (typeof window !== 'undefined' && window.tokenizer && !tokenizerRef.current) {
-      try {
-        tokenizerRef.current = window.tokenizer;
-        tokenizerRef.current.render(
-          process.env.NEXT_PUBLIC_BLOCKCHYP_TOKENIZING_KEY || '',
-          false, // production mode
-          'secure-input',
-          {
-            placeholder: 'Card Number',
-          }
-        );
-        setTokenizerReady(true);
-      } catch (err) {
-        console.error('Tokenizer init error:', err);
-      }
-    }
-  }
 
   async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -109,30 +84,13 @@ export default function RenewPage() {
     setMessage('');
 
     try {
-      // Tokenize card via BlockChyp iframe
-      if (!tokenizerRef.current) {
-        throw new Error('Payment system not loaded. Please refresh and try again.');
-      }
-
-      const tokenEvent = await tokenizerRef.current.tokenize(
-        process.env.NEXT_PUBLIC_BLOCKCHYP_TOKENIZING_KEY || '',
-        { test: false }
-      );
-
-      const tokenData = tokenEvent?.data || tokenEvent;
-
-      if (!tokenData?.success && !tokenData?.token) {
-        throw new Error(tokenData?.responseDescription || tokenData?.error || 'Failed to process card. Please check your details and try again.');
-      }
-
-      const token = tokenData.token;
-
-      // Send token to server for charging
       const paymentRes = await fetch('/api/payment/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token,
+          cardNumber: cardNumber.replace(/\s/g, ''),
+          expiry,
+          cvv,
           saveCard,
           subscriptionId: subscription?.id,
           amountCents: selectedPlan.price_cents,
@@ -175,6 +133,25 @@ export default function RenewPage() {
     }
   }
 
+  function formatCardNumber(value: string) {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = (matches && matches[0]) || '';
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    return parts.length ? parts.join(' ') : value;
+  }
+
+  function formatExpiry(value: string) {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) {
+      return v.slice(0, 2) + '/' + v.slice(2, 4);
+    }
+    return v;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black to-purple-950 flex items-center justify-center">
@@ -189,13 +166,7 @@ export default function RenewPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black to-purple-950 p-4">
-      <Script 
-        src="https://api.blockchyp.com/static/js/blockchyp-tokenizer-all.min.js"
-        onLoad={initTokenizer}
-      />
-      
       <div className="max-w-md mx-auto pt-12">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
             {isNewCustomer ? 'Get Started' : 'Renew Subscription'}
@@ -207,7 +178,6 @@ export default function RenewPage() {
           </p>
         </div>
 
-        {/* Current Subscription Info (for existing customers) */}
         {!isNewCustomer && subscription && (
           <div className="bg-black/50 backdrop-blur-xl rounded-2xl p-4 mb-6 border border-purple-500/30">
             <div className="flex justify-between items-center">
@@ -225,7 +195,6 @@ export default function RenewPage() {
           </div>
         )}
 
-        {/* Plan Selection */}
         <div className="mb-6">
           <h3 className="text-white font-semibold mb-3">Select Plan</h3>
           <div className="space-y-3">
@@ -261,7 +230,6 @@ export default function RenewPage() {
           </div>
         </div>
 
-        {/* New Customer Features */}
         {isNewCustomer && (
           <div className="bg-black/30 rounded-xl p-4 mb-6 border border-purple-500/20">
             <p className="text-gray-300 text-sm font-semibold mb-2">What you get:</p>
@@ -274,19 +242,48 @@ export default function RenewPage() {
           </div>
         )}
 
-        {/* Payment Form */}
         <form onSubmit={handlePayment} className="bg-black/50 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
           <h3 className="text-white font-semibold mb-4">Payment Details</h3>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-gray-400 text-sm mb-1">Card Details</label>
-              <div 
-                id="secure-input" 
-                className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 min-h-[48px]"
-                style={{ minHeight: '48px' }}
+              <label className="block text-gray-400 text-sm mb-1">Card Number</label>
+              <input
+                type="text"
+                value={cardNumber}
+                onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                placeholder="1234 5678 9012 3456"
+                maxLength={19}
+                className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                required
               />
-              <div id="secure-input-error" className="text-red-400 text-sm mt-1" style={{ display: 'none' }} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Expiry</label>
+                <input
+                  type="text"
+                  value={expiry}
+                  onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                  placeholder="MM/YY"
+                  maxLength={5}
+                  className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">CVV</label>
+                <input
+                  type="text"
+                  value={cvv}
+                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="123"
+                  maxLength={4}
+                  className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                  required
+                />
+              </div>
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer">
@@ -314,13 +311,11 @@ export default function RenewPage() {
 
           <button
             type="submit"
-            disabled={processing || !tokenizerReady}
+            disabled={processing}
             className="w-full mt-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg transition-all"
           >
             {processing 
               ? 'Processing...' 
-              : !tokenizerReady
-              ? 'Loading payment...'
               : `${isNewCustomer ? 'Subscribe' : 'Renew'} - $${(selectedPlan.price_cents / 100).toFixed(2)}`}
           </button>
 
@@ -329,7 +324,6 @@ export default function RenewPage() {
           </p>
         </form>
 
-        {/* Back Button */}
         <button
           onClick={() => router.push('/dashboard')}
           className="w-full mt-4 text-gray-400 hover:text-white py-3 transition-colors"

@@ -50,22 +50,20 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = createServerSupabase();
     
-    // Verify auth
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { token, saveCard, subscriptionId, amountCents: providedAmount, planName: providedPlanName } = await req.json();
+    const { cardNumber, expiry, cvv, saveCard, subscriptionId, amountCents: providedAmount, planName: providedPlanName } = await req.json();
 
-    if (!token) {
-      return NextResponse.json({ error: 'Missing payment token' }, { status: 400 });
+    if (!cardNumber || !expiry || !cvv) {
+      return NextResponse.json({ error: 'Missing card details' }, { status: 400 });
     }
 
     let amountCents = providedAmount || 2000;
     let planName = providedPlanName || '1 Month';
 
-    // If subscriptionId provided, get subscription details
     if (subscriptionId) {
       const { data } = await adminSupabase
         .from('user_subscriptions')
@@ -79,12 +77,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // BlockChyp charge request using token (from tokenizer)
+    const [expMonth, expYear] = expiry.split('/');
+
+    // BlockChyp charge - manual entry, production mode
     const chargeBody = JSON.stringify({
-      token,
+      manualEntry: true,
       amount: (amountCents / 100).toFixed(2),
+      pan: cardNumber.replace(/\s/g, ''),
+      expMonth: expMonth.padStart(2, '0'),
+      expYear: '20' + expYear,
+      cvv,
       description: `Omega TV - ${planName}`,
-      enroll: saveCard,
+      enroll: saveCard || false,
     });
 
     const headers = generateBlockChypHeaders(chargeBody);
@@ -98,7 +102,7 @@ export async function POST(req: NextRequest) {
     const result = await response.json();
 
     if (!result.approved) {
-      console.error('BlockChyp charge failed:', result);
+      console.error('BlockChyp decline:', result.responseDescription);
       return NextResponse.json({ 
         error: result.responseDescription || 'Payment declined' 
       }, { status: 400 });
@@ -121,7 +125,6 @@ export async function POST(req: NextRequest) {
       console.error('Failed to save payment record:', paymentError);
     }
 
-    // If card enrolled for auto-pay and subscription exists, save the token
     if (saveCard && result.token && subscriptionId) {
       await adminSupabase
         .from('user_subscriptions')
@@ -132,7 +135,7 @@ export async function POST(req: NextRequest) {
         .eq('id', subscriptionId);
     }
 
-    // Notify Seth of payment
+    // Notify Seth
     const userEmail = user.email || 'unknown';
     const userName = user.user_metadata?.name || userEmail;
     await sendPushover(
