@@ -56,15 +56,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { cardNumber, expiry, cvv, saveCard, subscriptionId, amountCents: providedAmount } = await req.json();
+    const { token, saveCard, subscriptionId, amountCents: providedAmount, planName: providedPlanName } = await req.json();
 
-    if (!cardNumber || !expiry || !cvv) {
-      return NextResponse.json({ error: 'Missing card details' }, { status: 400 });
+    if (!token) {
+      return NextResponse.json({ error: 'Missing payment token' }, { status: 400 });
     }
 
-    let amountCents = providedAmount || 2500; // Default $25
-    let subscription = null;
-    let planName = '1 Month';
+    let amountCents = providedAmount || 2000;
+    let planName = providedPlanName || '1 Month';
 
     // If subscriptionId provided, get subscription details
     if (subscriptionId) {
@@ -75,24 +74,15 @@ export async function POST(req: NextRequest) {
         .single();
       
       if (data) {
-        subscription = data;
-        amountCents = subscription.price_cents || amountCents;
-        planName = subscription.plan_name || planName;
+        amountCents = data.price_cents || amountCents;
+        planName = data.plan_name || planName;
       }
     }
 
-    const [expMonth, expYear] = expiry.split('/');
-
-    // BlockChyp charge request
+    // BlockChyp charge request using token (from tokenizer)
     const chargeBody = JSON.stringify({
-      test: process.env.NODE_ENV !== 'production',
-      transactionType: 'charge',
+      token,
       amount: (amountCents / 100).toFixed(2),
-      pan: cardNumber.replace(/\s/g, ''),
-      expMonth: expMonth.padStart(2, '0'),
-      expYear: '20' + expYear,
-      cvv,
-      postalCode: '',
       description: `Omega TV - ${planName}`,
       enroll: saveCard,
     });
@@ -108,6 +98,7 @@ export async function POST(req: NextRequest) {
     const result = await response.json();
 
     if (!result.approved) {
+      console.error('BlockChyp charge failed:', result);
       return NextResponse.json({ 
         error: result.responseDescription || 'Payment declined' 
       }, { status: 400 });
@@ -121,7 +112,7 @@ export async function POST(req: NextRequest) {
         subscription_id: subscriptionId || null,
         amount_cents: amountCents,
         blockchyp_transaction_id: result.transactionId,
-        status: 'pending', // Will be updated to 'completed' after account creation/renewal
+        status: 'pending',
       })
       .select()
       .single();
@@ -154,7 +145,6 @@ export async function POST(req: NextRequest) {
       success: true,
       paymentId: payment?.id,
       transactionId: result.transactionId,
-      cardToken: saveCard ? result.token : undefined,
       message: 'Payment successful',
     });
 

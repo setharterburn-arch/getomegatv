@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 
 interface Subscription {
   id: string;
@@ -29,19 +30,23 @@ const PLANS: Plan[] = [
   { id: '12mo', name: '12 Months', months: 12, price_cents: 15000, connections: 3, savings: 'Save $90' },
 ];
 
+declare global {
+  interface Window {
+    tokenizer: any;
+  }
+}
+
 export default function RenewPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan>(PLANS[0]);
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
   const [saveCard, setSaveCard] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [newCredentials, setNewCredentials] = useState<{ username: string; password: string } | null>(null);
+  const [tokenizerReady, setTokenizerReady] = useState(false);
+  const tokenizerRef = useRef<any>(null);
   
   const supabase = createClient();
   const router = useRouter();
@@ -49,6 +54,25 @@ export default function RenewPage() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  function initTokenizer() {
+    if (typeof window !== 'undefined' && window.tokenizer && !tokenizerRef.current) {
+      try {
+        tokenizerRef.current = window.tokenizer;
+        tokenizerRef.current.render(
+          process.env.NEXT_PUBLIC_BLOCKCHYP_TOKENIZING_KEY || '',
+          true, // test mode
+          'secure-input',
+          {
+            placeholder: 'Card Number',
+          }
+        );
+        setTokenizerReady(true);
+      } catch (err) {
+        console.error('Tokenizer init error:', err);
+      }
+    }
+  }
 
   async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -85,17 +109,41 @@ export default function RenewPage() {
     setMessage('');
 
     try {
-      // Process payment
+      // Tokenize card via BlockChyp iframe
+      let token: string;
+      
+      if (tokenizerRef.current) {
+        const tokenResult = await new Promise<any>((resolve, reject) => {
+          tokenizerRef.current.tokenize(
+            process.env.NEXT_PUBLIC_BLOCKCHYP_TOKENIZING_KEY || '',
+            (result: any) => {
+              if (result.error) {
+                reject(new Error(result.error));
+              } else {
+                resolve(result);
+              }
+            }
+          );
+        });
+        token = tokenResult.token;
+      } else {
+        throw new Error('Payment system not loaded. Please refresh and try again.');
+      }
+
+      if (!token) {
+        throw new Error('Failed to process card. Please check your details and try again.');
+      }
+
+      // Send token to server for charging
       const paymentRes = await fetch('/api/payment/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cardNumber: cardNumber.replace(/\s/g, ''),
-          expiry,
-          cvv,
+          token,
           saveCard,
           subscriptionId: subscription?.id,
           amountCents: selectedPlan.price_cents,
+          planName: selectedPlan.name,
         }),
       });
 
@@ -106,11 +154,9 @@ export default function RenewPage() {
       }
 
       if (isNewCustomer) {
-        // Payment recorded — Seth will manually set up the IPTV account
         setMessage('✅ Payment received! Your IPTV account will be set up shortly. You\'ll receive your login credentials soon.');
         return;
       } else {
-        // Renew existing subscription
         const renewRes = await fetch('/api/renew/trigger', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -136,66 +182,10 @@ export default function RenewPage() {
     }
   }
 
-  function formatCardNumber(value: string) {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    return parts.length ? parts.join(' ') : value;
-  }
-
-  function formatExpiry(value: string) {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return v.slice(0, 2) + '/' + v.slice(2, 4);
-    }
-    return v;
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black to-purple-950 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
-
-  // Show credentials after successful account creation
-  if (newCredentials) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-black to-purple-950 flex items-center justify-center p-4">
-        <div className="bg-black/50 backdrop-blur-xl rounded-2xl p-8 max-w-md w-full text-center border border-green-500/30">
-          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">🎉</span>
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Welcome to Omega TV!</h1>
-          <p className="text-gray-400 mb-6">Your account has been created. Save these credentials:</p>
-          
-          <div className="bg-black/50 rounded-xl p-4 mb-6 text-left">
-            <div className="mb-3">
-              <p className="text-gray-400 text-sm">Username</p>
-              <p className="text-white font-mono text-lg">{newCredentials.username}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-sm">Password</p>
-              <p className="text-white font-mono text-lg">{newCredentials.password}</p>
-            </div>
-          </div>
-
-          <p className="text-gray-500 text-sm mb-6">
-            Use these credentials in your IPTV app (TiviMate, IPTV Smarters, etc.)
-          </p>
-          
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-4 rounded-xl font-bold text-lg transition-all"
-          >
-            Go to Dashboard
-          </button>
-        </div>
       </div>
     );
   }
@@ -206,6 +196,11 @@ export default function RenewPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black to-purple-950 p-4">
+      <Script 
+        src="https://api.blockchyp.com/static/js/blockchyp-tokenizer-all.min.js"
+        onLoad={initTokenizer}
+      />
+      
       <div className="max-w-md mx-auto pt-12">
         {/* Header */}
         <div className="text-center mb-8">
@@ -292,43 +287,13 @@ export default function RenewPage() {
           
           <div className="space-y-4">
             <div>
-              <label className="block text-gray-400 text-sm mb-1">Card Number</label>
-              <input
-                type="text"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                placeholder="4111 1111 1111 1111"
-                maxLength={19}
-                className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-                required
+              <label className="block text-gray-400 text-sm mb-1">Card Details</label>
+              <div 
+                id="secure-input" 
+                className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 min-h-[48px]"
+                style={{ minHeight: '48px' }}
               />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Expiry</label>
-                <input
-                  type="text"
-                  value={expiry}
-                  onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                  placeholder="MM/YY"
-                  maxLength={5}
-                  className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">CVV</label>
-                <input
-                  type="text"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="123"
-                  maxLength={4}
-                  className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-                  required
-                />
-              </div>
+              <div id="secure-input-error" className="text-red-400 text-sm mt-1" style={{ display: 'none' }} />
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer">
@@ -356,11 +321,13 @@ export default function RenewPage() {
 
           <button
             type="submit"
-            disabled={processing}
+            disabled={processing || !tokenizerReady}
             className="w-full mt-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg transition-all"
           >
             {processing 
               ? 'Processing...' 
+              : !tokenizerReady
+              ? 'Loading payment...'
               : `${isNewCustomer ? 'Subscribe' : 'Renew'} - $${(selectedPlan.price_cents / 100).toFixed(2)}`}
           </button>
 
