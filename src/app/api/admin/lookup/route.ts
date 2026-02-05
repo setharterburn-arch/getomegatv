@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
 
-const ADMIN_EMAILS = ['setharterburn@gmail.com', 'seth@arterburn.me'];
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
 const AUTOMATION_URL = process.env.AUTOMATION_URL || 'http://149.56.97.159:3007';
 
 export async function GET(req: NextRequest) {

@@ -40,8 +40,6 @@ interface Subscription {
   created_at: string;
 }
 
-const ADMIN_EMAILS = ['setharterburn@gmail.com', 'seth@arterburn.me'];
-
 export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -65,12 +63,27 @@ export default function AdminPage() {
 
   async function checkAuth() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !ADMIN_EMAILS.includes(user.email || '')) {
-      router.push('/dashboard');
+    if (!user) {
+      router.push('/login');
       return;
     }
-    setAuthorized(true);
-    loadData();
+    // Try to load admin data - API will reject if not admin
+    try {
+      const res = await fetch('/api/admin/data');
+      if (res.status === 401) {
+        router.push('/dashboard');
+        return;
+      }
+      const data = await res.json();
+      setSupportRequests(data.supportRequests || []);
+      setPendingMatches(data.pendingMatches || []);
+      setSubscriptions(data.subscriptions || []);
+      setAuthorized(true);
+    } catch {
+      router.push('/dashboard');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadData() {

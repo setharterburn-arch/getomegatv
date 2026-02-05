@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, adminSupabase } from '@/lib/supabase-server';
 
-const ADMIN_EMAILS = ['setharterburn@gmail.com', 'seth@arterburn.me'];
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
 
 export async function GET(req: NextRequest) {
   try {
