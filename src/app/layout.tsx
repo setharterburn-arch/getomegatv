@@ -21,6 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className={inter.className}>
+        {/* Referral Banner */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-center py-2 px-4 text-sm font-medium">
+          🎁 <span className="font-bold">Refer a friend, get 6 months FREE!</span> They sign up for a year, you get half a year on us.
+        </div>
         {children}
       </body>
     </html>

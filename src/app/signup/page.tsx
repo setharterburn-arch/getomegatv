@@ -13,6 +13,7 @@ export default function SignupPage() {
     email: '',
     phone: '',
     password: '',
+    referredBy: '',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,6 +32,7 @@ export default function SignupPage() {
         data: {
           name: formData.name,
           phone: formData.phone,
+          referred_by: formData.referredBy,
         },
       },
     })
@@ -116,6 +118,18 @@ export default function SignupPage() {
                 minLength={6}
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Who referred you? <span className="text-gray-400 font-normal">(optional)</span></label>
+              <input
+                type="text"
+                value={formData.referredBy}
+                onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })}
+                placeholder="Friend's name or username"
+                className="w-full"
+              />
+              <p className="text-xs text-gray-400 mt-1">Refer a friend who signs up for a year and get 6 months free!</p>
             </div>
 
             <button
