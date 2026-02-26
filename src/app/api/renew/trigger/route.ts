@@ -84,8 +84,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Subscription renewed successfully',
-      expiresAt: newExpiry.toISOString(),
+      message: isLifetime ? 'Lifetime access activated!' : 'Subscription renewed successfully',
+      expiresAt: isLifetime ? null : newExpiry!.toISOString(),
     });
 
   } catch (error: any) {
