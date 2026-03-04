@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     // Determine plan name and price
     const planName = isLifetime ? 'Lifetime Access' : `${planMonths} Month`;
-    const priceCents = isLifetime ? 39900 : planMonths * 2500;
+    const priceCents = isLifetime ? 59900 : planMonths * 2500;
 
     // Save to database
     const { error: dbError } = await adminSupabase

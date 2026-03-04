@@ -29,7 +29,7 @@ const PLANS: Plan[] = [
   { id: '1mo', name: '1 Month', months: 1, price_cents: 2000, connections: 3 },
   { id: '6mo', name: '6 Months', months: 6, price_cents: 9000, connections: 3, savings: 'Save $30' },
   { id: '12mo', name: '12 Months', months: 12, price_cents: 15000, connections: 3, savings: 'Save $90' },
-  { id: 'lifetime', name: 'Lifetime Access', months: 0, price_cents: 39900, connections: 5, savings: 'Best Value' },
+  { id: 'lifetime', name: 'Lifetime Access', months: 0, price_cents: 59900, connections: 5, savings: 'Best Value' },
 ];
 
 export default function RenewPage() {
